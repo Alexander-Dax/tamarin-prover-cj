@@ -46,11 +46,13 @@ module Term.Unification (
   , enableMSet
   , enableXor
   , enableDiff
+  , enableConc
   , minimalMaudeSig
   , enableDiffMaudeSig
   , dhMaudeSig
   , bpMaudeSig
   , xorMaudeSig
+  , concatMaudeSig
   , msetMaudeSig
   , pairMaudeSig
   , symEncMaudeSig
@@ -90,6 +92,7 @@ import qualified Term.Maude.Process as UM
 import           Term.Maude.Process
                    (MaudeHandle, WithMaude, startMaude, getMaudeStats, mhMaudeSig, mhFilePath)
 import           Term.Maude.Signature
+
 import           Debug.Trace.Ignore
 
 -- Unification modulo AC
@@ -247,7 +250,10 @@ unifyRaw l0 r0 = do
            guard (length largs == length rargs)
            >> sequence_ (zipWith unifyRaw largs rargs)
        -- NOTE: We assume here that terms of the form mult(t) never occur.
+
        (FApp (AC lacsym) _, FApp (AC racsym) _) ->
+           guard (lacsym == racsym) >> tell [Equal l r]  -- delay unification
+       (FApp (A lacsym)  _, FApp (A racsym) _) ->
            guard (lacsym == racsym) >> tell [Equal l r]  -- delay unification
 
        (FApp (C lsym) largs, FApp (C rsym) rargs) ->
@@ -292,7 +298,6 @@ matchRaw sortOf t p = do
                 modify (M.insert vp t)
               Just tp | t == tp  -> return ()
                       | otherwise -> throwError NoMatcher
-
       (Lit (Con ct),  Lit (Con cp)) -> guard (ct == cp)
       (FApp (NoEq tfsym) targs, FApp (NoEq pfsym) pargs) ->
            guard (tfsym == pfsym && length targs == length pargs)
@@ -301,6 +306,7 @@ matchRaw sortOf t p = do
            guard (length targs == length pargs)
            >> sequence_ (zipWith (matchRaw sortOf) targs pargs)
       (FApp (AC _) _, FApp (AC _) _) -> throwError ACProblem
+      (FApp (A  _) _, FApp (A  _) _) -> throwError ACProblem
       (FApp (C _) _, FApp (C _) _) -> throwError ACProblem
 
       -- all matchable pairs of term constructors have been enumerated

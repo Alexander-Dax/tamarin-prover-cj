@@ -3,7 +3,7 @@
 -- |
 -- Copyright   : (c) 2010, 2011 Benedikt Schmidt
 -- License     : GPL v3 (see LICENSE)
--- 
+--
 -- Maintainer  : Benedikt Schmidt <beschmi@gmail.com>
 --
 -- Pretty printing and parsing of Maude terms and replies.
@@ -133,6 +133,9 @@ ppMaudeNoEqSym (o,(_,prv,cnstr))  = funSymPrefix <> funSymEncodeAttr prv cnstr <
 ppMaudeCSym :: CSym -> ByteString
 ppMaudeCSym EMap = funSymPrefix <> emapSymString
 
+-- | Pretty print a A symbol for Maude.
+ppMaudeASym :: ASym -> ByteString
+ppMaudeASym Concat = funSymPrefix <> concatSymString
 
 -- | @ppMaude t@ pretty prints the term @t@ for Maude.
 ppMaude :: Term MaudeLit -> ByteString
@@ -144,7 +147,8 @@ ppMaude t = case viewTerm t of
     FApp (NoEq fsym) as      -> ppMaudeNoEqSym fsym <> ppArgs as
     FApp (C fsym) as         -> ppMaudeCSym fsym    <> ppArgs as
     FApp (AC op) as          -> ppMaudeACSym op     <> ppArgs as
-    FApp List as             -> "list(" <> ppList as <> ")"
+    FApp (A  op) as          -> ppMaudeASym op      <> ppArgs as
+    FApp List as             -> ppList as
   where
     ppArgs as     = "(" <> (B.intercalate "," (map ppMaude as)) <> ")"
     ppInt         = BC.pack . show
@@ -172,13 +176,17 @@ ppTheory msig = BC.unlines $
     , "  op n : Nat -> Node ."
     -- used for encoding FApp List [t1,..,tk]
     -- list(cons(t1,cons(t2,..,cons(tk,nil)..)))
-    , "  op list : TOP -> TOP ."
     , "  op cons : TOP TOP -> TOP ."
     , "  op nil  : -> TOP ." ]
     ++
     (if enableMSet msig
        then
        [ theoryOpAC "mun : Msg Msg -> Msg [comm assoc]" ]
+       else [])
+    ++
+    (if enableConc msig
+       then
+       [ theoryOpAC "concat : Msg Msg -> Msg [assoc]" ]
        else [])
     ++
     (if enableDH msig
@@ -201,7 +209,7 @@ ppTheory msig = BC.unlines $
        , theoryOpAC "xor : Msg Msg -> Msg [comm assoc]" ]
        else [])
     ++
-    map theoryFunSym (S.toList $ stFunSyms msig)
+    map theoryFunSym (S.toList $ (stFunSyms msig))
     ++
     map theoryRule (S.toList $ rrulesForMaudeSig msig)
     ++
@@ -262,7 +270,7 @@ parseSubstitution msig = do
     endOfLine *> choice [string "Solution ", string "Unifier ", string "Matcher "] *> takeWhile1 isDigit *> endOfLine
     choice [ string "empty substitution" *> endOfLine *> pure []
            , many1 parseEntry]
-  where 
+  where
     parseEntry = (,) <$> (flip (,) <$> (string "x" *> decimal <* string ":") <*> parseSort)
                      <*> (string " --> " *> parseTerm msig <* endOfLine)
 
@@ -295,9 +303,6 @@ parseTerm msig = choice
                ]
    ]
   where
-    consSym = ("cons",(2,Public,Constructor))
-    nilSym  = ("nil",(0,Public,Constructor))
-
     parseFunSym ident args
       | op `elem` allowedfunSyms = replaceMinusFun op
       | otherwise                =
@@ -310,8 +315,7 @@ parseTerm msig = choice
             op                  = if special then 
                                         (ident , (length args,Public,Constructor))
                                   else  (ident', (length args, priv, cnstr))
-            allowedfunSyms = [consSym, nilSym]
-                ++ (map replaceUnderscoreFun $ S.toList $ noEqFunSyms msig)
+            allowedfunSyms = (map replaceUnderscoreFun $ S.toList $ noEqFunSyms msig)
 
     parseConst s = lit <$> (flip MaudeConst s <$> decimal) <* string ")"
 
@@ -322,13 +326,9 @@ parseTerm msig = choice
                        | ident == ppMaudeACSym Union      = fAppAC Union args
                        | ident == ppMaudeACSym Xor        = fAppAC Xor   args
                        | ident == ppMaudeCSym  EMap       = fAppC  EMap  args
-        appIdent [arg] | ident == "list"                  = fAppList (flattenCons arg)
+                       | ident == ppMaudeASym  Concat     = fAppA  Concat  args
         appIdent args                                     = fAppNoEq op args
           where op = parseFunSym ident args
-
-        flattenCons (viewTerm -> FApp (NoEq s) [x,xs]) | s == consSym = x:flattenCons xs
-        flattenCons (viewTerm -> FApp (NoEq s)  [])    | s == nilSym  = []
-        flattenCons t                                                 = [t]
 
     parseFAppConst ident = return $ fAppNoEq (parseFunSym ident []) []
 

@@ -55,6 +55,7 @@ module Theory.Text.Parser.Token (
 
   , opXor
 
+  , opConcat
   , opEqual
   , opLess
   , opAt
@@ -443,6 +444,10 @@ opMult = symbol_ "*"
 -- | The addition operator @*@.
 opPlus :: Parser ()
 opPlus = symbol_ "+"
+
+-- | The cons operator @*@.
+opConcat :: Parser ()
+opConcat = symbol_ "||"
 
 -- | The xor operator @XOR@ or @⊕@.
 opXor :: Parser ()

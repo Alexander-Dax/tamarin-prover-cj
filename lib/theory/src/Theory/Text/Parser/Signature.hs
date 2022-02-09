@@ -59,7 +59,8 @@ builtinsDiffNames = [
   ("asymmetric-encryption", asymEncMaudeSig),
   ("signing", signatureMaudeSig),
   ("revealing-signing", revealSignatureMaudeSig),
-  ("hashing", hashMaudeSig)
+  ("hashing", hashMaudeSig),
+  ("concatenation", concatMaudeSig)
               ]
 
 -- | Describes the mapping between a builtin name, its potential Maude Signatures
@@ -92,6 +93,7 @@ builtins thy0 =do
         _ <- symbol name
         return (opt, name)
     builtinTheory = asum $ map (try . extendSig) builtinsNames
+
 
 diffbuiltins :: Parser ()
 diffbuiltins =
@@ -143,9 +145,11 @@ function =  do
                 return ((f,(k,priv,destr)),argTypes,outType)
 
 
+
 functions :: Parser [SapicFunSym]
 functions =
     (try (symbol "functions") <|> symbol "function") *> colon *> commaSep1 function
+
 
 
 equations :: Parser ()
@@ -153,7 +157,7 @@ equations =
       (symbol "equations" *> colon *> commaSep1 equation) Data.Functor.$> ()
     where
       equation = do
-        rrule <- RRule <$> term llitNoPub True <*> (equalSign *> term llitNoPub True)
+        rrule <- RRule <$> msetterm True llitNoPub <*> (equalSign *> msetterm True llitNoPub)
         case rRuleToCtxtStRule rrule of
           Just str ->
               modifyStateSig (addCtxtStRule str)

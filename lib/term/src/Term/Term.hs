@@ -30,6 +30,7 @@ module Term.Term (
 
     -- ** Destructors and classifiers
     , isPair
+    , isConcat
     , isDiff
     , isInverse
     , isProduct
@@ -48,6 +49,7 @@ module Term.Term (
     -- * AC, C, and NonAC funcion symbols
     , FunSym(..)
     , ACSym(..)
+    , ASym(..)
     , CSym(..)
     , Privacy(..)
     , Constructability(..)
@@ -69,6 +71,7 @@ module Term.Term (
     , multSymString
     , zeroSymString
     , xorSymString
+    , concatSymString
 
     -- ** Function symbols
     , diffSym
@@ -84,10 +87,12 @@ module Term.Term (
     , bpFunSig
     , msetFunSig
     , xorFunSig
+    , concatFunSig
     , pairFunSig
     , dhReducibleFunSig
     , bpReducibleFunSig
     , xorReducibleFunSig
+    , concatReducibleFunSig
     , implicitFunSig
 
     , module Term.Term.Classes
@@ -146,6 +151,12 @@ isPair :: Show a => Term a -> Bool
 isPair (viewTerm2 -> FPair _ _) = True
 isPair _                        = False
 
+
+-- | 'True' iff the term is a well-formed concatenation.
+isConcat :: Show a => Term a -> Bool
+isConcat (viewTerm2 -> FConcat _) = True
+isConcat _                        = False
+
 -- | 'True' iff the term is a well-formed diff term.
 isDiff :: Show a => Term a -> Bool
 isDiff (viewTerm2 -> FDiff _ _) = True
@@ -190,6 +201,11 @@ isAC :: Show a => Term a -> Bool
 isAC (viewTerm -> FApp (AC _) _) = True
 isAC _                           = False
 
+-- | 'True' iff the term is an A-operator.
+isA :: Show a => Term a -> Bool
+isA (viewTerm -> FApp (A _) _) = True
+isA _                          = False
+
 ----------------------------------------------------------------------
 -- Convert Diff Terms
 ----------------------------------------------------------------------
@@ -216,12 +232,13 @@ getRightTerm t = getSide DiffRight t
 ----------------------------------------------------------------------
 
 -- Given a term, compute all protected subterms, i.e. all terms
--- which top symbol is a function, but not a pair, nor an AC symbol
+-- which top symbol is a function, but not a pair, nor an AC symbol, nor an A symbol
 allProtSubterms :: Show a => Term a -> [Term a]
-allProtSubterms t@(viewTerm -> FApp _ as) | isPair t || isAC t
+allProtSubterms t@(viewTerm -> FApp _ as) | isPair t || isAC t || isA t
         = concatMap allProtSubterms as
 allProtSubterms t@(viewTerm -> FApp _ as) | otherwise
         = t:concatMap allProtSubterms as
+
 allProtSubterms _                                     = []
 
 ----------------------------------------------------------------------
@@ -232,6 +249,7 @@ allProtSubterms _                                     = []
 showFunSymName :: FunSym -> String
 showFunSymName (NoEq (bs, _)) = BC.unpack bs
 showFunSymName (AC op)        = show op
+showFunSymName (A op)         = show op
 showFunSymName (C op )           = show op
 showFunSymName List              = "List"
 
@@ -242,9 +260,11 @@ prettyTerm ppLit = ppTerm
     ppTerm t = case viewTerm t of
         Lit l                                     -> ppLit l
         FApp (AC o)        ts                     -> ppTerms (ppACOp o) 1 "(" ")" ts
+        FApp (A  o)        ts                     -> ppTerms (ppAOp o)  1 "(" ")" ts
         FApp (NoEq s)      [t1,t2] | s == expSym  -> ppTerm t1 <> text "^" <> ppTerm t2
         FApp (NoEq s)      [t1,t2] | s == diffSym -> text "diff" <> text "(" <> ppTerm t1 <> text ", " <> ppTerm t2 <> text ")"
         FApp (NoEq s)      _       | s == pairSym -> ppTerms ", " 1 "<" ">" (split t)
+--        FApp (NoEq s)      _       | s == consSym -> ppTerms "; " 1 "[|" "|]" (splitCons t)
         FApp (NoEq (f, _)) []                     -> text (BC.unpack f)
         FApp (NoEq (f, _)) ts                     -> ppFun f ts
         FApp (C EMap)      ts                     -> ppFun emapSymString ts
@@ -253,6 +273,7 @@ prettyTerm ppLit = ppTerm
     ppACOp Mult  = "*"
     ppACOp Union = "+"
     ppACOp Xor   = "⊕"
+    ppAOp  Concat   = "||"
 
     ppTerms sepa n lead finish ts =
         fcat . (text lead :) . (++[text finish]) .

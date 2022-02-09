@@ -121,6 +121,7 @@ module Theory.Model.Rule (
   , removeDiffLabel
   , multRuleInstance
   , unionRuleInstance
+  , concatRuleInstance
   , xorRuleInstance
   , addAction
 
@@ -861,6 +862,19 @@ unionRuleInstance n = (Rule (IntrInfo (ConstrRule $ BC.pack "_union")) (map xifa
 
     xifact :: Int -> LNFact
     xifact k = kuFact (xi k)
+
+-- | Returns a concat rule instance of the given size.
+concatRuleInstance :: Int -> RuleAC
+concatRuleInstance n = (Rule (IntrInfo (ConstrRule $ BC.pack "_concat")) (map xifact [1..n]) [prod] [prod] [])
+  where
+    prod = kuFact (FAPP (A Concat) (map xi [1..n]))
+
+    xi :: Int -> LNTerm
+    xi k = (LIT $ Var $ LVar "x" LSortMsg (toInteger k))
+
+    xifact :: Int -> LNFact
+    xifact k = kuFact (xi k)
+
 
 -- | Returns a xor rule instance of the given size.
 xorRuleInstance :: Int -> RuleAC
