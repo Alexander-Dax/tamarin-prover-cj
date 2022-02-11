@@ -134,10 +134,10 @@ builtins :: [(String, S.Set ProVerifHeader)]
 builtins = map (\(x,y) -> (x, S.fromList y)) [
   ("diffie-hellman", [
       Sym "const" "g" ":bitstring" [],
-      Sym "fun" "grpid" ":bitstring" [],
+      Sym "const" "grpid" ":bitstring" [],
       Fun "fun" "EXP" 2 "(bitstring,bitstring):bitstring" [],
       Eq "equation" "forall a:bitstring,b:bitstring;" "EXP( EXP(g,a),b) = EXP(EXP(g,b),a)",
-      Eq "fun exp(bitstring,bitstring):bitstring reduc" "forall x:bitstring;" "reduc forall x:bitstring; exp(neuter, x) = neuter otherwise forall a:bitstring,b:bitstring; exp(a,b) = EXP(a,b)."
+      Eq "fun exp(bitstring,bitstring):bitstring" "" "reduc forall x:bitstring; exp(grpid, x) = grpid otherwise forall a:bitstring,b:bitstring; exp(a,b) = EXP(a,b)"
       ]
   ),
     ("locations-report", [
