@@ -133,9 +133,9 @@ state_headers = S.fromList [
 builtins :: [(String, S.Set ProVerifHeader)]
 builtins = map (\(x,y) -> (x, S.fromList y)) [
   ("diffie-hellman", [
-      Sym "const" "g" ":bitstring" [],
-      Fun "fun" "exp" 2 "(bitstring,bitstring):bitstring" [],
-      Eq "equation" "forall a:bitstring,b:bitstring;" "exp( exp(g,a),b) = exp(exp(g,b),a)"
+      -- Sym "const" "g" ":bitstring" [],
+      -- Fun "fun" "exp" 2 "(bitstring,bitstring):bitstring" [],
+      -- Eq "equation" "forall a:bitstring,b:bitstring;" "exp( exp(g,a),b) = exp(exp(g,b),a)"
       ]
   ),
     ("locations-report", [
