@@ -991,10 +991,12 @@ headersOfRule tc typeEnv r |  (lhs `RRule` rhs) <- ctxtStRuleToRRule r = do
             _ -> "equation"
        freesr = List.union (frees lhs) (frees rhs)
        freesrTyped = map (\v -> (v, M.lookup v $ vars tye)) freesr
-       hrule = Eq  prefix  ("forall " ++
+       hrule = Eq  prefix  (
+         if freesrTyped == [] then " " else
+         ("forall " ++
                              render (fsep (punctuate comma (map ppFreeTyped freesrTyped)))
                        ++
-                       ";")
+                       ";"))
                        (render $ sep [ nest 2 $ plhs
                            , text "=" <-> prhs ])
 
