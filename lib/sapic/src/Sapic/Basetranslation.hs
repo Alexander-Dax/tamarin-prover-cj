@@ -197,7 +197,8 @@ baseTransAction
 -- CHARLIE : still add locks and unlocks in the pure state thing, but with weaker formula only used to contradict injectivity, e.g    Lock(x,s)@i & Unlock(x,s)@j ==> not(Ex k s2. Lock(x,s2)@k & i<k<j) & not(Ex k s2. UnLock(x,s2)@k & i<k<j)
     | (Event f' ) <- ac
       , f <- toLNFact f' =
-          ([([def_state], TamarinAct f : [EventEmpty | needsAssImmediate], [def_state' tildex], [])], tildex)
+          let tx = (fromList $ getFactVariables f) `union` tildex in -- we allow events to magically bind variables
+          ([([def_state], TamarinAct f : [EventEmpty | needsAssImmediate], [def_state' tx], [])], tx)
     | (MSR l' a' r' res' _) <- ac
       , (l,a,r,res) <- ( map toLNFact l' , map toLNFact a' , map toLNFact r', map toLFormula res') =
           let tx' = freeset' l `union` tildex in
