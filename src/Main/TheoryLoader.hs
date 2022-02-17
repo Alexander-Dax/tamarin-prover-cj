@@ -40,6 +40,7 @@ module Main.TheoryLoader (
   , bpIntruderVariantsFile
   , addMessageDeductionRuleVariants
 
+  , lemmaSelector
   ) where
 
 -- import           Debug.Trace
@@ -82,6 +83,9 @@ theoryLoadFlags :: [Flag Arguments]
 theoryLoadFlags =
   [ flagOpt "" ["prove"] (updateArg "prove") "LEMMAPREFIX*|LEMMANAME"
       "Attempt to prove all lemmas that start with LEMMAPREFIX or the lemma which name is LEMMANAME (can be repeated)."
+
+  , flagOpt "" ["lemma"] (updateArg "lemma") "LEMMAPREFIX*|LEMMANAME"
+      "Select lemma(s) by name or prefx (can be repeated)"
 
   , flagOpt "dfs" ["stop-on-trace"] (updateArg "stopOnTrace") "DFS|BFS|SEQDFS|NONE"
       "How to search for traces (default DFS)"
@@ -133,17 +137,19 @@ lemmaSelectorByModule :: Arguments -> ProtoLemma f p -> Bool
 lemmaSelectorByModule as lem = case lemmaModules of
     [] -> True -- default to true if no modules (or only empty ones) are set
     _  -> getOutputModule as `elem` lemmaModules
-    where 
-        lemmaModules = concat [ m | LemmaModule m <- get lAttributes lem] 
+    where
+        lemmaModules = concat [ m | LemmaModule m <- get lAttributes lem]
 
 -- | Select lemmas for proving
 lemmaSelector :: Arguments -> Lemma p -> Bool
 lemmaSelector as lem
+  | null lemmaNames = True
   | lemmaNames == [""] = True
+  | lemmaNames == ["",""] = True
   | otherwise = any lemmaMatches lemmaNames
   where
       lemmaNames :: [String]
-      lemmaNames = findArg "prove" as
+      lemmaNames = findArg "prove" as ++ findArg "lemma" as
 
       lemmaMatches :: String -> Bool
       lemmaMatches pattern
@@ -157,7 +163,7 @@ diffLemmaSelector as lem
   | otherwise = any lemmaMatches lemmaNames
   where
       lemmaNames :: [String]
-      lemmaNames = findArg "prove" as
+      lemmaNames = (findArg "prove" as) ++ (findArg "lemma" as)
 
       lemmaMatches :: String -> Bool
       lemmaMatches pattern
@@ -188,7 +194,7 @@ loadClosedThy as inFile = loadOpenThy as inFile >>= Sapic.typeTheory >>= Sapic.t
 -- | Load a closed theory and report on well-formedness errors.
 loadClosedThyWfReport :: Arguments -> FilePath -> IO ClosedTheory
 loadClosedThyWfReport as inFile = do
-    thy <- loadOpenThy as inFile 
+    thy <- loadOpenThy as inFile
           >>= Sapic.typeTheory
           >>= Sapic.translate
           >>= addMessageDeductionRuleVariants
@@ -238,8 +244,8 @@ loadClosedThyString as input =
     case parseOpenTheoryString (defines as) input of
         Left err  -> return $ Left $ "parse error: " ++ show err
         Right thy -> do
-            thy' <- Sapic.typeTheory thy 
-                  >>= Sapic.translate 
+            thy' <- Sapic.typeTheory thy
+                  >>= Sapic.translate
             Right <$> closeThy as thy' -- No "return" because closeThy gives IO (ClosedTheory)
 
 
@@ -265,8 +271,8 @@ reportOnClosedThyStringWellformedness as input =
     case loadOpenThyString as input of
       Left  err   -> return $ "parse error: " ++ show err
       Right thy -> do
-            thy' <- Sapic.typeTheory thy 
-                  >>= Sapic.translate 
+            thy' <- Sapic.typeTheory thy
+                  >>= Sapic.translate
             sig <- toSignatureWithMaude (maudePath as) $ get thySignature thy'
             case checkWellformedness thy' sig of
                   []     -> return ""
