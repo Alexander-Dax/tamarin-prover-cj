@@ -837,7 +837,7 @@ isPropFormula (Conn _ p q) = isPropFormula p && isPropFormula q
 ppQueryFormula :: (MonadFresh m, Functor s) => TypingEnvironment -> ProtoFormula s (String, LSort) Name LVar -> [LVar] -> m Doc
 ppQueryFormula te fm extravs = do
   (vs,(p,typeVars)) <- ppLFormula te ppNAtom fm
-  return $ sep [text "query " <>  fsep (punctuate comma (map (ppTimeTypeVar typeVars) (extravs++vs))) <> text ";",
+  return $ sep [text "query " <>  fsep (punctuate comma (map (ppTimeTypeVar typeVars) (map head . group . sort $ extravs++vs))) <> text ";",
          nest 1 p,
          text "."]
 
