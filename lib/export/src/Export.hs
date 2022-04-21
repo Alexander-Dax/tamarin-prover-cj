@@ -165,10 +165,8 @@ ppPubName (NameId t) = text t
 -- Loader of the export functions
 ------------------------------------------------------------------------------
 loadQueries :: Theory sig c b p SapicElement -> [Doc]
-loadQueries thy = [text $ get_text (lookupExportInfo "queries" thy)]
-  where get_text Nothing = ""
-        get_text (Just m) = L.get eText m
-
+loadQueries thy =
+  map (\x -> text $ L.get eText x) (lookupExportInfo "queries" thy)  
 
 ------------------------------------------------------------------------------
 -- Core Proverif Equivalence Export
@@ -244,10 +242,7 @@ prettyDeepSecTheory thy = do
 ------------------------------------------------------------------------------
 loadRequests :: Theory sig c b p SapicElement -> [Doc]
 loadRequests thy =
-  [text $ get_text (lookupExportInfo "requests" thy)]
-  where get_text Nothing = ""
-        get_text (Just m) = L.get eText m
-
+  map (\x -> text $ L.get eText x) (lookupExportInfo "requests" thy)  
 
 ------------------------------------------------------------------------------
 -- Term Printers

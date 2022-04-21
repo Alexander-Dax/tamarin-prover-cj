@@ -1405,10 +1405,9 @@ clearFunctionTypingInfos = modify thyItems (filter f)
     f _                                  = True
 
 -- | Add a new process expression.
-addExportInfo :: ExportInfo -> Theory sig c r p SapicElement -> Maybe (Theory sig c r p SapicElement)
+addExportInfo :: ExportInfo -> Theory sig c r p SapicElement -> (Theory sig c r p SapicElement)
 addExportInfo eInfo thy = do
-    guard (isNothing $ lookupExportInfo (L.get eTag eInfo) thy)
-    return $ modify thyItems (++ [SapicItem (ExportInfoItem eInfo)]) thy
+    modify thyItems (++ [SapicItem (ExportInfoItem eInfo)]) thy
 
 -- search process
 findProcess :: String -> Theory sig c r p SapicElement -> Maybe (Theory sig c r p SapicElement)
@@ -1538,8 +1537,8 @@ lookupFunctionTypingInfo tag = find (\(fs,_,_) -> tag == fs) . theoryFunctionTyp
 
 
 -- | Find the export info for the given tag.
-lookupExportInfo :: String -> Theory sig c r p SapicElement -> Maybe ExportInfo
-lookupExportInfo tag = find ((tag ==) . L.get eTag) . theoryExportInfos
+lookupExportInfo :: String -> Theory sig c r p SapicElement -> [ExportInfo]
+lookupExportInfo tag = filter ((tag ==) . L.get eTag) . theoryExportInfos
 
 
 -- | Find the restriction with the given name.
