@@ -295,20 +295,24 @@ actionprocess thy=
                         i <- BC.pack <$> identifier
                         ts <- option [] $ parens $ commaSep (msetterm False ltypedlit)
                         (p, vars) <- checkProcess (BC.unpack i) thy
-                        let base_subst = zip vars ts
-                        let extend_sup = foldl (\acc (svar,t) ->
-                                  map (,t)
-                                   (case svar of
-                                      (SapicLVar sl_var (Just _)) ->
-                                        [svar, SapicLVar sl_var Nothing]
-                                      _ -> [svar]
-                                   )
-                                  ++ acc) [] base_subst
-                        substP <- applyM (substFromList extend_sup) p
-                        return (ProcessComb
-                                (ProcessCall (BC.unpack i) ts) mempty
-                                (processAddAnnotation substP (mempty {processnames =  [BC.unpack i]}))
-                                (ProcessNull mempty))
+                        if vars==[] || length vars == length ts then
+                          do
+                            let base_subst = zip vars ts
+                            let extend_sup = foldl (\acc (svar,t) ->
+                                                      map (,t)
+                                                      (case svar of
+                                                         (SapicLVar sl_var (Just _)) ->
+                                                           [svar, SapicLVar sl_var Nothing]
+                                                         _ -> [svar]
+                                                      )
+                                                      ++ acc) [] base_subst
+                            substP <- applyM (substFromList extend_sup) p
+                            return (ProcessComb
+                                        (ProcessCall (BC.unpack i) ts) mempty
+                                         (processAddAnnotation substP (mempty {processnames =  [BC.unpack i]}))
+                                         (ProcessNull mempty))
+                           
+                          else do fail $ "macro process defined or called with wrong number of arguments"
                         )
 -- | checks if process exists, if not -> error
 checkProcess :: String -> OpenTheory -> Parser (PlainProcess, [SapicLVar])
