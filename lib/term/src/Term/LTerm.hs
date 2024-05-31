@@ -15,7 +15,6 @@
 -- Copyright   : (c) 2010-2012 Benedikt Schmidt & Simon Meier
 -- License     : GPL v3 (see LICENSE)
 --
--- Maintainer  : Benedikt Schmidt <beschmi@gmail.com>
 --
 -- Terms with logical variables  and names.
 module Term.LTerm (
@@ -126,7 +125,6 @@ import qualified Control.Monad.Trans.PreciseFresh as Precise
 
 import           GHC.Generics                     (Generic)
 import           Data.Binary
-import qualified Data.List                        as L
 import qualified Data.DList                       as D
 import           Data.Foldable                    hiding (concatMap, elem, notElem, any)
 import           Data.Data

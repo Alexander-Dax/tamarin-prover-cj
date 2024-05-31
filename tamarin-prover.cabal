@@ -1,18 +1,19 @@
 cabal-version:      >= 1.10
 build-type:         Simple
 name:               tamarin-prover
-version:            1.7.1
+version:            1.9.0
 license:            GPL
 license-file:       LICENSE
 category:           Theorem Provers
-author:             Benedikt Schmidt <benedikt.schmidt@inf.ethz.ch>,
-                    Simon Meier <simon.meier@inf.ethz.ch>,
+author:             Benedikt Schmidt,
+                    Simon Meier,
+                    Cas Cremers <cremers@cispa.de>,
                     Jannik Dreier <research@jannikdreier.net>,
                     Ralf Sasse <ralf.sasse@gmail.com>
 maintainer:         Cas Cremers <cremers@cispa.de>,
                     Jannik Dreier <research@jannikdreier.net>,
                     Ralf Sasse <ralf.sasse@gmail.com>
-copyright:          Benedikt Schmidt, Simon Meier, Jannik Dreier, Ralf Sasse, ETH Zurich, 2010-2020
+copyright:          Benedikt Schmidt, Simon Meier, Cas Cremers, Jannik Dreier, Ralf Sasse, 2010-2023
 synopsis:           The Tamarin prover for security protocol analysis.
 description:
 
@@ -103,12 +104,10 @@ flag build-tests
 ----------------------
 
 executable tamarin-prover
-    default-language: Haskell2010
+    default-language: GHC2021
 
     if flag(threaded)
-        ghc-options:   -threaded -eventlog
-
-    -- -XFlexibleInstances
+        ghc-options:   -threaded
 
     ghc-options:       -Wall -fwarn-tabs -rtsopts -feager-blackholing -main-is Main
     ghc-prof-options:  -auto-all
@@ -156,12 +155,12 @@ executable tamarin-prover
       , warp
       , yesod-core
       , yesod-static
-      , tamarin-prover-utils  == 1.7.1
-      , tamarin-prover-term   == 1.7.1
-      , tamarin-prover-theory == 1.7.1
-      , tamarin-prover-sapic == 1.7.1
-      , tamarin-prover-export == 1.7.1
-      , tamarin-prover-accountability == 1.7.1
+      , tamarin-prover-utils  == 1.9.0
+      , tamarin-prover-term   == 1.9.0
+      , tamarin-prover-theory == 1.9.0
+      , tamarin-prover-sapic == 1.9.0
+      , tamarin-prover-export == 1.9.0
+      , tamarin-prover-accountability == 1.9.0
 
     other-modules:
       Paths_tamarin_prover
@@ -186,7 +185,9 @@ executable tamarin-prover
 
       Test.ParserTests
 
-    other-extensions:
+    default-extensions:
+      DuplicateRecordFields
+      OverloadedRecordDot
       TemplateHaskell
 
 

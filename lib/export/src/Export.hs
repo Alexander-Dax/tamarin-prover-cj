@@ -93,8 +93,8 @@ translationWarning s cont = unsafePerformIO printWarning
 -- Core Proverif Export
 ------------------------------------------------------------------------------
 
-proverifTemplate :: Document d => [d] -> [d] -> d -> [d] -> [d] -> [d] -> d
-proverifTemplate headers queries process macroproc ruleproc lemmas =
+proverifTemplate :: Document d => [d] -> [d] -> d -> [d] -> [d] -> [d] -> [d] -> d
+proverifTemplate headers queries process macroproc ruleproc lemmas comments =
   vcat headers
     $$ vcat queries
     $$ vcat lemmas
@@ -102,13 +102,14 @@ proverifTemplate headers queries process macroproc ruleproc lemmas =
     $$ vcat ruleproc
     $$ text "process"
     $$ nest 4 process
+    $--$ vcat (intersperse (text "") comments)
 
 prettyProVerifTheory :: (ProtoLemma LNFormula ProofSkeleton -> Bool) -> (OpenTheory, TypingEnvironment) -> IO Doc
 prettyProVerifTheory lemSel (thy, typEnv) = do
   headers <- loadHeaders tc thy typEnv
   headers2 <- checkDuplicates $ (S.toList . filterHeaders $ baseHeaders `S.union` headers `S.union` prochd `S.union` macroprochd) ++ S.toList (filterHeaders ruleHeaders)
   let hd = attribHeaders tc headers2
-  return $ proverifTemplate hd queries proc' macroproc ruleproc lemmas
+  return $ proverifTemplate hd queries proc' macroproc ruleproc lemmas comments
   where
     tc = emptyTC {predicates = theoryPredicates thy}
     (proc, prochd, hasBoundState, hasUnboundState) = loadProc tc thy
@@ -130,6 +131,7 @@ prettyProVerifTheory lemSel (thy, typEnv) = do
       -- if stateM is not empty, we have inlined the process calls, so we don't reoutput them
       if hasBoundState then ([text ""], S.empty) else loadMacroProc tc thy
     uncurry4 f (a,b,c,d) = f a b c d
+    comments = [ text "(*" $$ text bd $$ text "*)" | (_, bd) <- theoryFormalComments thy ]
 
 -- ProVerif Headers need to be ordered, and declared only once. We order them by type, and will update a set of headers.
 data ProVerifHeader
@@ -204,6 +206,7 @@ filterHeaders = S.filter (not . isForbidden)
     isForbidden (Fun "fun" "true" _ _ _) = True
     isForbidden (Type "bitstring") = True
     isForbidden (Type "channel") = True
+    isForbidden (Type "nat") = True    
     isForbidden _ = False
 
 -- We cannot define a constant and a function with the same name in proverif
@@ -243,12 +246,13 @@ loadQueries thy =
 -- Core Proverif Equivalence Export
 ------------------------------------------------------------------------------
 
-proverifEquivTemplate :: Document d => [d] -> [d] -> [d] -> [d] -> d
-proverifEquivTemplate headers queries equivlemmas macroproc =
+proverifEquivTemplate :: Document d => [d] -> [d] -> [d] -> [d] -> [d] -> d
+proverifEquivTemplate headers queries equivlemmas macroproc comments =
   vcat headers
     $$ vcat queries
     $$ vcat macroproc
     $$ vcat equivlemmas
+    $--$ vcat (intersperse (text "") comments)
 
 prettyProVerifEquivTheory :: (OpenTheory, TypingEnvironment) -> IO Doc
 prettyProVerifEquivTheory (thy, typEnv) = do
@@ -256,7 +260,7 @@ prettyProVerifEquivTheory (thy, typEnv) = do
   headers2 <- checkDuplicates . S.toList . filterHeaders $ baseHeaders `S.union` headers `S.union` equivhd `S.union` diffEquivhd `S.union` macroprochd
   let hd = attribHeaders tc headers2
   fproc <- finalproc
-  return $ proverifEquivTemplate hd queries fproc macroproc
+  return $ proverifEquivTemplate hd queries fproc macroproc comments
   where
     tc = emptyTC {predicates = theoryPredicates thy}
     (equivlemmas, equivhd, hasBoundState, hasUnboundState) = loadEquivProc tc thy
@@ -270,17 +274,19 @@ prettyProVerifEquivTheory (thy, typEnv) = do
     (macroproc, macroprochd) =
       -- if stateM is not empty, we have inlined the process calls, so we don't reoutput them
       if hasBoundState then ([text ""], S.empty) else loadMacroProc tc thy
+    comments = [ text "(*" $$ text bd $$ text "*)" | (_, bd) <- theoryFormalComments thy ]
 
 ------------------------------------------------------------------------------
 -- Core DeepSec Export
 ------------------------------------------------------------------------------
 
-deepsecTemplate :: Document d => [d] -> [d] -> [d] -> [d] -> d
-deepsecTemplate headers macroproc requests equivlemmas =
+deepsecTemplate :: Document d => [d] -> [d] -> [d] -> [d] -> [d] -> d
+deepsecTemplate headers macroproc requests equivlemmas comments =
   vcat headers
     $$ vcat macroproc
     $$ vcat requests
     $$ vcat equivlemmas
+    $--$ vcat (intersperse (text "") comments)
 
 emptyTypeEnv :: TypingEnvironment
 emptyTypeEnv = TypingEnvironment {vars = M.empty, events = M.empty, funs = M.empty}
@@ -295,12 +301,13 @@ prettyDeepSecTheory thy = do
                 `S.union` macroprochd
                 `S.union` equivhd
             )
-  return $ deepsecTemplate hd macroproc requests equivlemmas
+  return $ deepsecTemplate hd macroproc requests equivlemmas comments
   where
     tc = emptyTC {trans = DeepSec}
     requests = loadRequests thy
     (macroproc, macroprochd) = loadMacroProc tc thy
     (equivlemmas, equivhd, _, _) = loadEquivProc tc thy
+    comments = [ text "(*" $$ text bd $$ text "*)" | (_, bd) <- theoryFormalComments thy ]
 
 -- Loader of the export functions
 ------------------------------------------------------------------------------
@@ -339,6 +346,7 @@ auxppTerm ppLit t = (ppTerm t, getHdTerm t)
       Lit v -> ppLit v
       FApp (AC Xor) ts -> ppXor ts
       FApp (AC o) ts -> ppTerms (ppACOp o) 1 "(" ")" ts
+      FApp (NoEq s) [] | s == natOneSym -> text "1"      
       FApp (NoEq s) [t1, t2] | s == expSym -> text "exp(" <> ppTerm t1 <> text ", " <> ppTerm t2 <> text ")"
       FApp (NoEq s) [t1, t2] | s == diffSym -> text "choice" <> text "[" <> ppTerm t1 <> text ", " <> ppTerm t2 <> text "]"
       FApp (NoEq _) [t1, t2] | isPair tm -> text "(" <> ppTerm t1 <> text ", " <> ppTerm t2 <> text ")"
@@ -348,8 +356,9 @@ auxppTerm ppLit t = (ppTerm t, getHdTerm t)
       FApp List ts -> ppFun (BC.pack "LIST") ts
 
     ppACOp Mult = "*"
-    ppACOp Union = "+"
+    ppACOp NatPlus = "+"
     ppACOp Xor = "⊕"
+    ppACOp u = translationFail $ "Unsupported operator " ++ show u
 
     ppXor [] = text "one"
     ppXor [t1, t2] = text "xor(" <> ppTerm t1 <> text ", " <> ppTerm t2 <> text ")"
@@ -393,6 +402,10 @@ auxppSapicTerm tc mVars isPattern = auxppTerm ppLit
         | S.member lvar mVars ->
           translationWarning ("Pattern matching on fresh variable "++n++" makes Tamarin and Proverif behaviours diverge.") $
           text "=" <> ppLVar lvar
+      Var (SapicLVar lvar@(LVar n LSortNat _) _)
+        | S.member lvar mVars ->
+          translationWarning ("Pattern matching on natural variable "++n++" makes Tamarin and Proverif behaviours diverge.") $
+          text "=" <> ppLVar lvar          
       Var (SapicLVar lvar _)
         | S.member lvar mVars -> text "=" <> ppLVar lvar
       l | isPattern -> ppTypeLit tc l
@@ -880,6 +893,7 @@ ppProtoAtom _ True _ ppT (EqE l r) =
   (sep [ppT l <-> text "<>", ppT r], M.empty)
 -- sep [ppNTerm l <-> text "≈", ppNTerm r]
 ppProtoAtom _ _ _ ppT (Less u v) = (ppT u <-> opLess <-> ppT v, M.empty)
+ppProtoAtom _ _ _ ppT (Subterm u v) = (ppT u <-> opLess <-> ppT v, M.empty)
 ppProtoAtom _ _ _ _ (Last i) = (operator_ "last" <> parens (text (show i)), M.empty)
 
 ppAtom :: TypingEnvironment -> Bool -> (LNTerm -> Doc) -> ProtoAtom s LNTerm -> (Doc, M.Map LVar SapicType)
@@ -1077,9 +1091,8 @@ loadHeaders tc thy typeEnv = do
       foldl
         ( \y x -> case List.lookup x builtins of
             Nothing -> case x of
-              "multiset"         -> -- on the long run, this should throw UnsupportedBuiltinMS, but we currently allow to use multiset in a restricted fashion
-                translationWarning "you are using in the Sapic model the multiset builtin. Unless you are only using it to model natural numbers, this may result in a failure of the translation." y
-              "bilinear-pairing" -> throw UnsupportedBuiltinBP
+              "multiset"         -> translationFail "Multiset is not supported in ProVerif. If you want to model natural numbers, you can use the dedicated Tamarin builtin."
+              "bilinear-pairing" -> translationFail "Bilinear pairings are not supported in ProVerif."
               _                  -> y
             Just t -> y `S.union` t
         )

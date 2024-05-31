@@ -8,7 +8,6 @@
 -- Copyright   : (c) 2010-2012 Simon Meier & Benedikt Schmidt
 -- License     : GPL v3 (see LICENSE)
 --
--- Maintainer  : Simon Meier <iridcode@gmail.com>
 -- Portability : GHC only
 --
 -- Proof methods for the heuristics: the external small-step interface to the
@@ -245,11 +244,11 @@ execProofMethod ctxt method sys =
       case method of
         Sorry _                                -> return M.empty
         Solved
-          | null (openGoals sys)
+          | null (openGoals sys)  && not (contradictorySystem ctxt sys)
             && finishedSubterms ctxt sys       -> return M.empty
           | otherwise                          -> Nothing
         Unfinishable
-          | null (openGoals sys)
+          | null (openGoals sys)  && not (contradictorySystem ctxt sys)
             && not (finishedSubterms ctxt sys) -> return M.empty
           | otherwise                          -> Nothing
         SolveGoal goal
