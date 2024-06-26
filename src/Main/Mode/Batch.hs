@@ -21,6 +21,7 @@ import System.Exit (die)
 import System.FilePath
 import System.Timing (timedIO)
 import Extension.Data.Label
+import Data.Label qualified as L
 
 import Text.PrettyPrint.Class qualified as Pretty
 import Text.Printf (printf)
